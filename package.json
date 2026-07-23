@@ -1,0 +1,16 @@
+{
+  "name": "signet-engine",
+  "version": "0.1.0",
+  "description": "Signet — the open-source build contract engine. Bring your own keys. A binding, tamper-evident contract between a non-technical founder and an AI builder: adversarial interrogation, hash-locked acceptance criteria, gated build loop, hard budget caps, and an append-only evidence ledger.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=18.17" },
+  "bin": { "signet": "./src/cli.js" },
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "node --test 'test/*.test.js'",
+    "genesis": "node scripts/genesis.js"
+  },
+  "dependencies": {},
+  "keywords": ["ai", "build-contract", "byok", "agent", "verification", "founder", "no-code", "evidence-ledger"]
+}
