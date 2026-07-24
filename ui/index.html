@@ -1,0 +1,1142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signet — Build Contract</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:      #F7F3EB;
+    --paper-hi:   #FBF8F1;
+    --paper-lo:   #EFE9DD;
+    --ink:        #1A1712;
+    --ink-soft:   #4D463B;
+    --ink-faint:  #8A8172;
+    --wax:        #7A1F1F;
+    --wax-deep:   #5C1414;
+    --rust:       #8C3B22;
+    --verdigris:  #2E4A32;
+    --bronze:     #9C7C46;
+    --hairline:   rgba(156,124,70,.38);
+    --hairline-soft: rgba(156,124,70,.22);
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --sans:  "Inter", system-ui, sans-serif;
+    --mono:  "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html{ -webkit-text-size-adjust:100%; }
+
+  body{
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+    background-color: var(--paper);
+    /* paper: faint laid-texture lines + gentle vignette, gradients only */
+    background-image:
+      repeating-linear-gradient(0deg,
+        rgba(120,100,60,.020) 0px, rgba(120,100,60,.020) 1px,
+        transparent 1px, transparent 4px),
+      repeating-linear-gradient(90deg,
+        rgba(120,100,60,.012) 0px, rgba(120,100,60,.012) 1px,
+        transparent 1px, transparent 7px),
+      radial-gradient(120% 90% at 50% 0%, rgba(255,252,244,.9), rgba(255,252,244,0) 60%),
+      radial-gradient(140% 120% at 50% 110%, rgba(122,90,40,.10), rgba(122,90,40,0) 55%);
+    font-feature-settings: "liga" 1, "kern" 1;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+  }
+
+  ::selection{ background: rgba(122,31,31,.16); }
+
+  /* ————— frame ————— */
+  .frame{ display:flex; min-height:100vh; }
+
+  .rail{
+    width: 212px; flex: none;
+    border-right: 1px solid var(--hairline);
+    padding: 44px 0 32px;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .brand{
+    padding: 0 30px 26px;
+  }
+  .brand .mark{
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    font-size: 27px; font-weight: 500;
+    letter-spacing: .01em;
+    font-feature-settings: "liga" 1;
+  }
+  .brand .mark .dot{ color: var(--wax); }
+  .brand .tag{
+    margin-top: 2px;
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  nav.views{ padding: 14px 0; border-top: 1px solid var(--hairline-soft); }
+  nav.views a{
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 9px 30px;
+    font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--ink-soft); text-decoration: none;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: color .15s ease;
+  }
+  nav.views a:hover{ color: var(--ink); }
+  nav.views a.active{
+    color: var(--wax);
+    border-left-color: var(--wax);
+  }
+  nav.views a .n{
+    font-family: var(--mono); font-size: 10px; color: var(--ink-faint);
+    letter-spacing: 0;
+  }
+  nav.views a.active .n{ color: var(--wax); }
+
+  .rail .foot{
+    margin-top: auto; padding: 20px 30px 0;
+    border-top: 1px solid var(--hairline-soft);
+    font-size: 11px; color: var(--ink-faint); line-height: 1.9;
+  }
+  .chain-ind{ display:flex; align-items:center; gap:7px; letter-spacing:.08em; }
+  .chain-ind .lamp{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--verdigris); flex:none;
+    box-shadow: 0 0 0 2px rgba(46,74,50,.15);
+  }
+  .chain-ind.broken .lamp{ background: var(--rust); box-shadow: 0 0 0 2px rgba(140,59,34,.18); }
+  .chain-ind.broken{ color: var(--rust); }
+  .mode-line{ letter-spacing:.08em; }
+  .mode-line.specimen{ color: var(--wax); }
+
+  main{
+    flex: 1; min-width: 0;
+    padding: 60px 56px 110px;
+    display: flex; justify-content: center;
+  }
+  .page{ width: 100%; max-width: 720px; }
+
+  /* ————— shared typographic furniture ————— */
+  .eyebrow{
+    font-size: 10.5px; letter-spacing: .26em; text-transform: uppercase;
+    color: var(--bronze); font-weight: 500;
+  }
+  h1.doc-title{
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-size: 34px; line-height: 1.18;
+    margin: 10px 0 6px;
+    letter-spacing: -.005em;
+    font-feature-settings: "liga" 1, "onum" 1;
+  }
+  .doc-sub{ color: var(--ink-faint); font-size: 13px; }
+  .rule{
+    border: 0; height: 1px; background: var(--hairline);
+    margin: 26px 0 34px;
+    position: relative;
+  }
+  .rule::after{
+    content:""; position:absolute; left:0; top:2px; width:56px; height:1px;
+    background: var(--hairline);
+  }
+
+  .article{ margin: 0 0 44px; }
+  .article-head{
+    display:flex; align-items:baseline; gap: 14px;
+    margin-bottom: 16px;
+  }
+  .article-head .num{
+    font-family: var(--serif); font-weight: 500; font-size: 13px;
+    letter-spacing: .14em; color: var(--wax);
+    font-feature-settings: "lnum" 1;
+    white-space: nowrap;
+  }
+  .article-head .name{
+    font-size: 11.5px; letter-spacing: .24em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 500;
+  }
+  .article-head .thread{
+    flex:1; height:1px; background: var(--hairline-soft); align-self: center;
+  }
+
+  .prose{
+    font-family: var(--serif); font-weight: 340;
+    font-size: 16.5px; line-height: 1.72;
+    font-feature-settings: "liga" 1, "onum" 1;
+    color: var(--ink);
+    hanging-punctuation: first;
+  }
+  .prose + .prose{ margin-top: .8em; }
+  .prose .who{ color: var(--ink-soft); font-style: italic; }
+
+  ul.plain{ list-style:none; }
+  ul.outcomes li{
+    font-family: var(--serif); font-weight: 340; font-size: 16.5px; line-height: 1.65;
+    font-feature-settings: "onum" 1;
+    padding: 9px 0 9px 26px; position: relative;
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+  ul.outcomes li:last-child{ border-bottom: 0; }
+  ul.outcomes li::before{
+    content:"§"; position:absolute; left:2px; top:9px;
+    color: var(--bronze); font-size: 14px;
+  }
+
+  /* ————— acceptance criteria: hanging numerals ————— */
+  .crit{ display:grid; grid-template-columns: 74px 1fr; column-gap: 18px;
+         padding: 15px 0; border-bottom: 1px solid var(--hairline-soft); }
+  .crit:last-child{ border-bottom: 0; }
+  .crit .cid{
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft);
+    text-align: right; padding-top: 3px; letter-spacing:.02em;
+  }
+  .crit .body .stmt{
+    font-family: var(--serif); font-weight: 340; font-size: 16px; line-height: 1.6;
+    font-feature-settings: "onum" 1;
+  }
+  .crit-meta{ margin-top: 7px; display:flex; flex-wrap:wrap; gap: 8px 14px; align-items:center; }
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint);
+    border: 1px solid var(--hairline-soft); border-radius: 2px;
+    padding: 2px 8px;
+  }
+  .chip .glyph{ font-size: 12px; letter-spacing:0; }
+  .chip.phase{ border-style: dashed; }
+  .state{
+    font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight:600;
+  }
+  .state.pass{ color: var(--verdigris); }
+  .state.fail{ color: var(--rust); }
+  .state.unverified{ color: var(--ink-faint); font-weight: 500; }
+  .state::before{ content:"— "; font-weight:400; color: var(--ink-faint); }
+
+  /* ————— no-go exclusions box ————— */
+  .exclusions{
+    border: 1px solid var(--hairline);
+    outline: 1px solid var(--hairline-soft); outline-offset: 3px;
+    padding: 22px 26px;
+    background: linear-gradient(180deg, rgba(255,252,244,.5), rgba(239,233,221,.35));
+  }
+  .exclusions .label{
+    font-size: 10px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--rust); font-weight: 600; margin-bottom: 12px;
+  }
+  .exclusions li{
+    font-family: var(--serif); font-weight: 340; font-size: 15.5px; line-height: 1.6;
+    padding: 6px 0 6px 24px; position: relative;
+    font-feature-settings:"onum" 1;
+  }
+  .exclusions li::before{
+    content:"✕"; position:absolute; left:0; top:7px;
+    font-size: 11px; color: var(--rust); font-family: var(--sans);
+  }
+
+  /* ————— budget ————— */
+  .budget-table{ font-variant-numeric: tabular-nums lining-nums; }
+  .bphase{ padding: 14px 0 18px; border-bottom: 1px solid var(--hairline-soft); }
+  .bphase:last-child{ border-bottom:0; }
+  .bphase .bname{
+    display:flex; justify-content:space-between; align-items:baseline; margin-bottom: 10px;
+  }
+  .bphase .bname .p{
+    font-size: 11.5px; letter-spacing:.2em; text-transform: uppercase; color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .bphase .bname .cap-note{ font-size: 11px; color: var(--ink-faint); letter-spacing:.05em; }
+  .meter{ margin: 7px 0; }
+  .meter .mrow{
+    display:flex; justify-content:space-between; align-items: baseline;
+    font-size: 12px; color: var(--ink-soft); margin-bottom: 4px;
+  }
+  .meter .mrow .u{ font-size: 10px; letter-spacing:.16em; text-transform:uppercase; color: var(--ink-faint); }
+  .meter .mrow .v{ font-family: var(--mono); font-size: 11.5px; }
+  .meter .track{
+    height: 3px; background: var(--paper-lo); position: relative;
+    border-radius: 1px; overflow: visible;
+  }
+  .meter .track::after{ /* hard-cap terminus */
+    content:""; position:absolute; right:0; top:-3px; width:1px; height:9px;
+    background: var(--ink-soft);
+  }
+  .meter .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    background: var(--bronze); border-radius: 1px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+  .meter.capped .fill{ background: var(--rust); }
+  .meter.capped .mrow .v{ color: var(--rust); }
+  .cap-flag{
+    display:inline-block; margin-left:8px;
+    font-size: 9.5px; letter-spacing:.18em; color: var(--rust); font-weight:600;
+  }
+
+  /* ————— assumptions ————— */
+  .assume{ padding: 13px 0; border-bottom: 1px solid var(--hairline-soft);
+           display:grid; grid-template-columns: 74px 1fr; column-gap: 18px; }
+  .assume:last-child{ border-bottom:0; }
+  .assume .rk{
+    text-align:right; padding-top:4px;
+    font-size: 9.5px; letter-spacing:.18em; text-transform: uppercase; font-weight:600;
+  }
+  .assume .rk.high{ color: var(--rust); }
+  .assume .rk.medium{ color: var(--bronze); }
+  .assume .rk.low{ color: var(--ink-faint); }
+  .assume .stmt{ font-family: var(--serif); font-weight:340; font-size: 15.5px; line-height:1.6;
+                 font-feature-settings:"onum" 1; }
+  .assume .test{ margin-top: 4px; font-size: 12.5px; color: var(--ink-faint); }
+  .assume .test b{ font-weight: 600; letter-spacing: .1em; font-size: 10px; text-transform: uppercase;
+                   color: var(--bronze); }
+
+  /* ————— execution block & wax seal ————— */
+  .execution{
+    margin-top: 56px; padding-top: 34px;
+    border-top: 1px solid var(--hairline);
+    display:flex; gap: 40px; align-items: flex-end; justify-content: space-between;
+  }
+  .sig-block{ flex: 1; max-width: 400px; }
+  .sig-script{
+    font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: 26px; line-height: 1.2; color: var(--ink);
+    padding-bottom: 8px;
+    font-feature-settings: "liga" 1;
+  }
+  .sig-line{ border-bottom: 1px solid var(--ink-soft); }
+  .sig-caption{
+    margin-top: 8px; font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ink-faint); display:flex; justify-content: space-between; gap: 12px;
+  }
+
+  .seal-wrap{ flex: none; text-align:center; }
+  .seal{
+    width: 128px; height: 128px; position: relative;
+    border-radius: 47% 53% 50% 50% / 52% 48% 53% 47%;
+    background:
+      radial-gradient(circle at 34% 28%, #a03434 0%, #7A1F1F 44%, #611616 74%, #4E1010 100%);
+    box-shadow:
+      inset 0 2px 5px rgba(255,225,205,.25),
+      inset 0 -5px 12px rgba(30,5,5,.5),
+      inset 3px 0 8px rgba(30,5,5,.2),
+      0 4px 10px rgba(74,26,16,.30),
+      0 1px 2px rgba(0,0,0,.25);
+    transform: rotate(-7deg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 3px;
+    margin: 0 auto;
+  }
+  .seal::before{
+    content:""; position:absolute; inset: 11px;
+    border: 1px solid rgba(255,228,205,.30);
+    border-radius: 50%;
+  }
+  .seal::after{
+    content:""; position:absolute; inset: 16px;
+    border: 1px dotted rgba(255,228,205,.22);
+    border-radius: 50%;
+  }
+  .seal .s-name{
+    font-size: 8.5px; letter-spacing:.34em; text-transform:uppercase;
+    color: rgba(255,236,220,.78); font-weight:600;
+    text-shadow: 0 -1px 0 rgba(40,5,5,.6);
+    padding-left: .34em; /* balance tracking */
+  }
+  .seal .s-hash{
+    font-family: var(--mono); font-size: 13px; letter-spacing: .12em;
+    color: rgba(255,242,230,.92);
+    text-shadow: 0 -1px 0 rgba(40,5,5,.7), 0 1px 1px rgba(255,200,180,.18);
+  }
+  .seal .s-sub{
+    font-size: 7px; letter-spacing:.3em; text-transform:uppercase;
+    color: rgba(255,228,205,.5); padding-left:.3em;
+  }
+  .seal.broken{ filter: saturate(.55) brightness(.88); }
+  .seal.broken .crack{
+    position:absolute; inset:0; pointer-events:none;
+    background: rgba(22,6,6,.6);
+    clip-path: polygon(55% -4%, 59% 12%, 47% 27%, 62% 44%, 49% 61%, 58% 78%, 50% 104%,
+                       46% 104%, 53% 78%, 44% 61%, 57% 44%, 42% 27%, 54% 12%, 50% -4%);
+  }
+  .seal-caption{
+    margin-top: 12px; font-size: 9.5px; letter-spacing:.2em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .seal-caption .mono{ font-family: var(--mono); letter-spacing:.04em; text-transform:none; }
+
+  .banner{
+    padding: 13px 18px; margin-bottom: 34px;
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600;
+    border-left: 3px solid;
+  }
+  .banner.alarm{
+    color: var(--rust); border-color: var(--rust);
+    background: linear-gradient(90deg, rgba(140,59,34,.08), rgba(140,59,34,0));
+  }
+  .banner.draft{
+    color: var(--bronze); border-color: var(--bronze);
+    background: linear-gradient(90deg, rgba(156,124,70,.08), rgba(156,124,70,0));
+  }
+  .banner .sub{ display:block; margin-top:3px; text-transform:none; letter-spacing:.02em;
+                font-weight:400; font-size:12px; color: var(--ink-soft); }
+
+  /* ————— brief (typewritten memo) ————— */
+  .memo{
+    background: linear-gradient(180deg, var(--paper-hi), var(--paper) 120px);
+    border: 1px solid var(--hairline);
+    padding: 40px 44px 46px;
+    box-shadow: 0 1px 0 rgba(120,90,40,.08), 0 8px 24px -18px rgba(80,60,20,.35);
+    position: relative;
+  }
+  .memo::before{
+    content:""; position:absolute; top:12px; left:12px; right:12px; height:1px;
+    background: var(--hairline-soft);
+  }
+  .memo-head{
+    font-family: var(--mono); font-size: 11px; letter-spacing:.1em;
+    color: var(--ink-faint); text-transform: uppercase;
+    display:flex; justify-content:space-between; flex-wrap: wrap; gap: 6px 20px;
+    padding-bottom: 18px; margin-bottom: 24px;
+    border-bottom: 1px dashed var(--hairline);
+  }
+  .memo-body{
+    font-family: var(--mono); font-size: 13px; line-height: 1.9;
+    color: var(--ink); white-space: pre-wrap; word-break: break-word;
+  }
+  .memo-body .h{ font-weight: 500; letter-spacing:.06em; }
+
+  /* ————— interrogation (deposition) ————— */
+  .depo-note{ font-size: 12.5px; color: var(--ink-faint); font-style: italic; margin-bottom: 30px; }
+  .qa{ margin-bottom: 34px; }
+  .qa .turn{ display:grid; grid-template-columns: 58px 1fr; column-gap: 16px; }
+  .qa .turn + .turn{ margin-top: 14px; }
+  .qa .marker{
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+    text-align: right; padding-top: 4px; letter-spacing:.03em;
+  }
+  .qa .turn.q .marker{ color: var(--wax); }
+  .qa .qtext{
+    font-family: var(--serif); font-weight: 400; font-size: 17px; line-height: 1.62;
+    font-feature-settings: "onum" 1;
+  }
+  .qa .why{
+    margin-top: 6px; font-family: var(--serif); font-style: italic; font-weight: 340;
+    font-size: 14px; color: var(--ink-soft); line-height: 1.6;
+  }
+  .qa .default{
+    margin-top: 8px; font-size: 11.5px; color: var(--ink-faint);
+  }
+  .qa .default b{
+    font-weight: 600; font-size: 9.5px; letter-spacing:.18em; text-transform: uppercase;
+    color: var(--bronze); margin-right: 6px;
+  }
+  .qa .atext{
+    font-family: var(--serif); font-weight: 340; font-size: 16px; line-height: 1.65;
+    font-feature-settings:"onum" 1;
+    border-left: 2px solid var(--hairline);
+    padding-left: 16px;
+  }
+  .qa .unanswered{
+    font-size: 11px; letter-spacing:.16em; text-transform: uppercase; color: var(--ink-faint);
+    padding-top: 5px;
+  }
+
+  /* ————— ledger ————— */
+  .decision-card{
+    border: 1px solid rgba(122,31,31,.4);
+    border-left: 3px solid var(--wax);
+    background: linear-gradient(180deg, rgba(122,31,31,.05), rgba(122,31,31,.015));
+    padding: 22px 26px 24px; margin-bottom: 44px;
+  }
+  .decision-card .dc-label{
+    font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--wax); font-weight: 600; margin-bottom: 12px;
+  }
+  .decision-card .dc-item{ padding: 8px 0; }
+  .decision-card .dc-item + .dc-item{ border-top: 1px solid var(--hairline-soft); }
+  .decision-card .dc-crit{
+    font-family: var(--serif); font-weight: 400; font-size: 15.5px; line-height: 1.55;
+    font-feature-settings:"onum" 1;
+  }
+  .decision-card .dc-crit .cid{ font-family: var(--mono); font-size: 12px; color: var(--wax);
+                                margin-right: 10px; }
+  .decision-card code{
+    display: inline-block; margin-top: 8px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink); background: var(--paper-lo);
+    border: 1px solid var(--hairline-soft);
+    padding: 4px 10px; border-radius: 2px;
+    letter-spacing: .01em;
+  }
+
+  .ledger-list{ position: relative; }
+  .ledger-list::before{ /* chain spine */
+    content:""; position:absolute; left: 129px; top: 10px; bottom: 10px; width: 1px;
+    background: var(--hairline-soft);
+  }
+  .lrow{
+    display: grid;
+    grid-template-columns: 44px 66px 40px 1fr 118px;
+    column-gap: 0; align-items: baseline;
+    padding: 11px 0;
+    position: relative;
+  }
+  .lrow + .lrow{ border-top: 1px solid rgba(156,124,70,.12); }
+  .lrow .seq{
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+    font-feature-settings:"tnum" 1;
+  }
+  .lrow .time{
+    font-size: 10.5px; color: var(--ink-faint); letter-spacing: .04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .lrow .node{ position: relative; height: 100%; }
+  .lrow .node::before{
+    content:""; position:absolute; left: 16px; top: 5px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--paper);
+    border: 1.5px solid var(--bronze);
+  }
+  .lrow.k-pass .node::before{ border-color: var(--verdigris); background: var(--verdigris); }
+  .lrow.k-fail .node::before{ border-color: var(--rust); background: var(--rust); }
+  .lrow.k-decision .node::before{ border-color: var(--wax); background: var(--wax); }
+  .lrow.k-seal .node::before{ border-color: var(--wax); background: var(--paper); }
+  .lrow .what{ padding-left: 16px; padding-right: 18px; min-width: 0; }
+  .lrow .badge{
+    display:inline-block; font-size: 9px; letter-spacing:.16em; text-transform: uppercase;
+    font-weight: 600; margin-right: 10px; white-space: nowrap;
+  }
+  .lrow .badge{ color: var(--bronze); }
+  .lrow.k-pass .badge{ color: var(--verdigris); }
+  .lrow.k-fail .badge{ color: var(--rust); }
+  .lrow.k-decision .badge, .lrow.k-seal .badge{ color: var(--wax); }
+  .lrow.k-neutral .badge{ color: var(--ink-faint); }
+  .lrow .summary{
+    font-size: 13px; color: var(--ink); line-height: 1.5;
+    overflow-wrap: break-word;
+  }
+  .lrow.k-fail .summary{ color: #5c2a1a; }
+  .lrow .hashes{ text-align: right; font-family: var(--mono); font-size: 10px;
+                 line-height: 1.7; color: var(--ink-faint); }
+  .lrow .hashes .h{ color: var(--ink-soft); }
+  .lrow .hashes .p{ opacity:.7; }
+  .lrow .hashes .p::before{ content:"⇠ "; color: var(--bronze); }
+
+  .empty-note{
+    font-family: var(--serif); font-style: italic; font-weight: 340;
+    font-size: 16px; color: var(--ink-faint);
+    padding: 60px 0; text-align: center;
+  }
+
+  /* ————— specimen watermark ————— */
+  #watermark{
+    position: fixed; inset: 0; z-index: 40; pointer-events: none;
+    display: none; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  body.specimen #watermark{ display: flex; }
+  #watermark span{
+    font-family: var(--serif); font-weight: 600; font-size: 9vw;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: rgba(122,31,31,.045);
+    transform: rotate(-28deg); white-space: nowrap;
+  }
+
+  /* ————— responsive ————— */
+  @media (max-width: 980px){
+    .frame{ flex-direction: column; }
+    .rail{
+      width: 100%; height: auto; position: static;
+      border-right: 0; border-bottom: 1px solid var(--hairline);
+      padding: 22px 0 0;
+      flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0 8px;
+    }
+    .brand{ padding: 0 28px 16px; }
+    nav.views{ display: flex; border-top: 0; padding: 0 16px; margin-left: auto; }
+    nav.views a{ border-left: 0; border-bottom: 2px solid transparent; padding: 10px 14px 16px; }
+    nav.views a.active{ border-bottom-color: var(--wax); }
+    .rail .foot{
+      width: 100%; margin: 0; border-top: 1px solid var(--hairline-soft);
+      padding: 8px 28px; display: flex; gap: 26px;
+    }
+    main{ padding: 44px 32px 90px; }
+    .execution{ flex-direction: column; align-items: stretch; gap: 36px; }
+    .seal-wrap{ align-self: flex-end; }
+    .lrow{ grid-template-columns: 38px 60px 30px 1fr; }
+    .lrow .hashes{ grid-column: 4; text-align: left; padding-left: 16px; padding-top: 2px; }
+    .ledger-list::before{ left: 113px; }
+  }
+</style>
+</head>
+<body>
+<div id="watermark" aria-hidden="true"><span>Specimen</span></div>
+
+<div class="frame">
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">Signet<span class="dot">.</span></div>
+      <div class="tag">Build Contract Engine</div>
+    </div>
+    <nav class="views" id="nav">
+      <a data-view="brief"><span class="n">i</span>Brief</a>
+      <a data-view="interrogation"><span class="n">ii</span>Interrogation</a>
+      <a data-view="contract" class="active"><span class="n">iii</span>Contract</a>
+      <a data-view="ledger"><span class="n">iv</span>Ledger</a>
+    </nav>
+    <div class="foot">
+      <div class="chain-ind" id="chainInd"><span class="lamp"></span><span id="chainText">chain —</span></div>
+      <div class="mode-line" id="modeLine">connecting…</div>
+    </div>
+  </aside>
+
+  <main><div class="page" id="view"></div></main>
+</div>
+
+<script>
+'use strict';
+
+/* ————————————————————————————————————————————————
+   Demo state — shown only when /api/state is unreachable
+   (file opened standalone). Marked SPECIMEN on screen.
+———————————————————————————————————————————————— */
+const DEMO_STATE = (() => {
+  const T = (h, m) => '2026-07-21T' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00Z';
+  const HX = s => (s + 'a1f0c9d2b7e4a1f0c9d2b7e4a1f0c9d2b7e4a1f0c9d2b7e4a1f0c9d2b7e4a1f0').slice(0, 64);
+  const contract = {
+    meta: { title: 'Ledgerline — Cash-flow Clarity for Family Restaurants', version: '1.0.0', created: '2026-07-21' },
+    problem: {
+      statement: 'Family-run restaurants discover cash shortfalls only when the account is already empty. Their numbers live in a shoebox of receipts, a POS export nobody opens, and the owner’s head.',
+      who_has_it: 'Owner-operators of 1–3 location restaurants with no bookkeeper on staff.'
+    },
+    outcome: [
+      'The owner sees next week’s projected cash position every Monday morning without entering data by hand.',
+      'A shortfall two weeks out produces a plain-language warning with the three largest causes.',
+      'Setup from a POS CSV export to first forecast takes under fifteen minutes.'
+    ],
+    acceptance_criteria: [
+      { id: 'AC-1', statement: 'Importing a Square or Toast CSV export produces a categorized transaction ledger with ≥ 95% of rows auto-classified.', phase: 'core', verification: { type: 'automated', check: { kind: 'test', ref: 'test/import.test.js' } } },
+      { id: 'AC-2', statement: 'A 14-day cash projection is generated from ≥ 60 days of history and re-computed on every import.', phase: 'core', verification: { type: 'evidence', event_type: 'forecast.generated' } },
+      { id: 'AC-3', statement: 'Projected shortfalls are flagged with the three largest contributing outflows, in plain language, no jargon.', phase: 'core', verification: { type: 'automated', check: { kind: 'test', ref: 'test/alerts.test.js' } } },
+      { id: 'AC-4', statement: 'All money values are stored as integer cents; no floating-point currency arithmetic anywhere in the codebase.', phase: 'core', verification: { type: 'automated', check: { kind: 'lint', ref: 'scripts/no-float-money.js' } } },
+      { id: 'AC-5', statement: 'The Monday summary email renders correctly in Gmail and Apple Mail and reads in under ninety seconds.', phase: 'polish', verification: { type: 'human_decision', prompt: 'Read the sample summary. Would you forward this to a restaurant owner?' } },
+      { id: 'AC-6', statement: 'Onboarding — from CSV upload to first forecast on screen — completes in under fifteen minutes for a non-technical user.', phase: 'polish', verification: { type: 'human_decision', prompt: 'Time a full onboarding run. Approve only if under fifteen minutes.' } },
+      { id: 'AC-7', statement: 'Historical data never leaves the owner’s machine except to the forecast service over TLS; verified by egress audit.', phase: 'core', verification: { type: 'evidence', event_type: 'audit.egress' } },
+      { id: 'AC-8', statement: 'A restaurateur can correct a miscategorized transaction in two clicks, and the correction persists across imports.', phase: 'polish', verification: { type: 'human_decision', prompt: 'Perform a correction, re-import, confirm it held.' } }
+    ],
+    no_go: [
+      'No payroll processing or payroll advice of any kind.',
+      'No lending, financing offers, or credit products.',
+      'No social features, sharing, or public dashboards.',
+      'No machine-learning categorizer in v1 — rules only, so mistakes are explainable.'
+    ],
+    quality_bar: [
+      'Every screen readable by a 55-year-old owner at arm’s length on a phone.',
+      'No unexplained numbers: every figure traceable to its source rows.',
+      'Cold start to interactive in under two seconds on a 2019 laptop.'
+    ],
+    budget: { phases: [
+      { name: 'interrogation', max_tokens: 20000,  max_usd: 0.60 },
+      { name: 'core',          max_tokens: 600000, max_usd: 14.00 },
+      { name: 'polish',        max_tokens: 250000, max_usd: 6.00 }
+    ]},
+    decision_points: [
+      'Which POS integrations ship in v1 beyond Square and Toast.',
+      'Whether the Monday summary sends by email or SMS.',
+      'Pricing and trial length — reserved entirely to the founder.'
+    ],
+    assumptions: [
+      { statement: 'Owners can locate and export a CSV from their POS without support.', risk: 'high', test: 'Ask five owners to produce an export unaided; pass if four succeed.' },
+      { statement: 'Sixty days of history is enough signal for a useful 14-day projection.', risk: 'medium', test: 'Back-test against three donated ledgers; error under 12% at day 14.' },
+      { statement: 'A weekly cadence is right — daily would be ignored.', risk: 'low', test: 'Instrument open rates for four weeks after launch.' }
+    ],
+    seal: {
+      algorithm: 'sha256',
+      hash: '3f9a1c74e0b58d26c1a49b07f3d2685e9c04ab17d6e83f52ba90c4d178e56a23',
+      signed_by: 'M. Okafor, Founder',
+      signed_at: '2026-07-21T09:14:00Z',
+      locked: true
+    }
+  };
+  const L = [];
+  const push = (h, m, type, payload) => {
+    const seq = L.length;
+    L.push({ seq, ts: T(h, m), type, payload,
+      prev_hash: seq === 0 ? HX('0000') : L[seq - 1].hash,
+      hash: HX('e' + seq.toString(16) + '7c') });
+  };
+  push(8, 41, 'interrogation.started', { brief_chars: 1834 });
+  push(8, 42, 'interrogation.question', { id: 'IQ-1', question: 'When you say “see their cash position,” do you mean bank balance today, or projected balance ahead — and how far ahead is decision-useful?', why_it_matters: 'These are different products. One is a mirror; the other is a forecast, and forecasts carry an accuracy obligation.', default_if_unanswered: 'Projected balance, fourteen days ahead.' });
+  push(8, 42, 'interrogation.question', { id: 'IQ-2', question: 'Where does the transaction data actually come from on day one — bank feed, POS export, or manual entry?', why_it_matters: 'Bank integrations add months and compliance surface. The answer sets the entire scope of v1.', default_if_unanswered: 'POS CSV export only; no bank connections in v1.' });
+  push(8, 43, 'interrogation.question', { id: 'IQ-3', question: 'If the forecast is wrong and an owner overdrafts, what do you want to have been true about how the number was presented?', why_it_matters: 'This fixes the liability posture and the language of every alert before a line of copy is written.', default_if_unanswered: 'Ranges, never point estimates; “projection, not advice” on every screen.' });
+  push(8, 43, 'interrogation.question', { id: 'IQ-4', question: 'What is explicitly out — payroll, lending, taxes?', why_it_matters: 'Every adjacent feature is a regulatory doorway. The exclusions article is written from this answer.', default_if_unanswered: 'All three excluded.' });
+  push(8, 44, 'interrogation.question', { id: 'IQ-5', question: 'What total spend ends this experiment — the number at which you’d rather have the cash than the answer?', why_it_matters: 'This becomes the hard cap. The build halts there without asking.', default_if_unanswered: '$20 total across all phases.' });
+  push(8, 51, 'interrogation.answer', { id: 'IQ-1', answer: 'Projected, definitely. Two weeks out is when they can still do something about it — call a supplier, delay an order.' });
+  push(8, 53, 'interrogation.answer', { id: 'IQ-2', answer: 'POS export. Every owner I talked to can get a CSV out of Square. Bank feeds scare them and me.' });
+  push(8, 55, 'interrogation.answer', { id: 'IQ-3', answer: 'That it never looked like a promise. Show a range, name the assumptions, say “projection” everywhere.' });
+  push(8, 57, 'interrogation.answer', { id: 'IQ-5', answer: 'Twenty dollars, hard stop. If this needs more than that to prove itself, it’s the wrong shape.' });
+  push(9, 2,  'interrogation.drafted', { criteria: 8, assumptions: 3, phases: 3 });
+  push(9, 14, 'contract.locked', { title: contract.meta.title, hash: contract.seal.hash, signed_by: 'M. Okafor, Founder' });
+  push(9, 20, 'budget.spend', { phase: 'interrogation', tokens: 9400, usd: 0.31, note: 'question synthesis + draft', total_tokens: 9400, total_usd: 0.31 });
+  push(9, 48, 'build.increment', { phase: 'core', intent: 'CSV import + rules categorizer', criteria: ['AC-1', 'AC-4'], output_chars: 14238 });
+  push(10, 5, 'budget.spend', { phase: 'core', tokens: 122000, usd: 3.05, note: 'import pipeline', total_tokens: 122000, total_usd: 3.05 });
+  push(10, 22, 'gate.pass', { criterion: 'AC-1', via: 'test', detail: '96.2% auto-classified across 3 sample exports' });
+  push(10, 24, 'gate.pass', { criterion: 'AC-4', via: 'lint', detail: 'no float-currency arithmetic detected' });
+  push(11, 2, 'build.increment', { phase: 'core', intent: '14-day projection engine', criteria: ['AC-2', 'AC-3'], output_chars: 20114 });
+  push(11, 30, 'budget.spend', { phase: 'core', tokens: 231000, usd: 5.61, note: 'projection engine + backtests', total_tokens: 353000, total_usd: 8.66 });
+  push(11, 41, 'gate.fail', { criterion: 'AC-3', via: 'test', detail: 'shortfall causes ranked by count, not magnitude — 2 of 9 fixtures fail' });
+  push(12, 8, 'drift.rejected', { phase: 'core', intent: 'Add competitor benchmarking dashboard', cited: [] });
+  push(13, 2, 'gate.pass', { criterion: 'AC-2', via: 'evidence', event_type: 'forecast.generated' });
+  push(13, 40, 'budget.spend', { phase: 'core', tokens: 159000, usd: 5.34, note: 'AC-3 rework + egress audit prep', total_tokens: 512000, total_usd: 14.00 });
+  push(13, 41, 'budget.cap_hit', { phase: 'core', dim: 'max_usd', spent: 14.00, cap: 14.00 });
+  push(14, 6, 'budget.spend', { phase: 'polish', tokens: 41000, usd: 1.08, note: 'onboarding flow', total_tokens: 41000, total_usd: 1.08 });
+  push(14, 30, 'decision.requested', { criterion: 'AC-6', prompt: 'Time a full onboarding run. Approve only if under fifteen minutes.' });
+  return {
+    brief: [
+      'RE: A cash-flow product for family restaurants',
+      '',
+      'My uncle ran a taqueria for 19 years and closed it over a cash crunch he',
+      'saw 4 days too late. The numbers existed. Nobody was looking at them.',
+      '',
+      'I want a tool where an owner exports what their register already knows,',
+      'and every Monday gets one honest page: here is what the next two weeks',
+      'look like, and here is the thing that will hurt you if you ignore it.',
+      '',
+      'What I care about:',
+      '- No data entry. They will not do it. Ever.',
+      '- Plain language. "Food costs are eating you" not "COGS variance."',
+      '- It must never feel like a bank product. No upsells, no credit offers.',
+      '',
+      'What I do not want:',
+      '- Payroll, lending, taxes. Out. All of it.',
+      '- Anything that requires trusting us with their bank login on day one.',
+      '',
+      'Budget: I will spend about twenty dollars of model time proving this',
+      'works. If it needs more than that, it is the wrong shape.',
+      '',
+      '— M. Okafor'
+    ].join('\n'),
+    draft: null,
+    contract,
+    seal: { valid: true, hash: contract.seal.hash },
+    ledger: L,
+    ledger_chain: { valid: true, length: L.length },
+    budget: [
+      { phase: 'interrogation', cap: { max_tokens: 20000,  max_usd: 0.60  }, spent: { tokens: 9400,   usd: 0.31  }, remaining: { tokens: 10600,  usd: 0.29 } },
+      { phase: 'core',          cap: { max_tokens: 600000, max_usd: 14.00 }, spent: { tokens: 512000, usd: 14.00 }, remaining: { tokens: 88000,  usd: 0.00 } },
+      { phase: 'polish',        cap: { max_tokens: 250000, max_usd: 6.00  }, spent: { tokens: 41000,  usd: 1.08  }, remaining: { tokens: 209000, usd: 4.92 } }
+    ],
+    pending_decisions: ['AC-6'],
+    gate_status: { 'AC-1': 'pass', 'AC-2': 'pass', 'AC-3': 'fail', 'AC-4': 'pass' }
+  };
+})();
+
+/* ———————————————————————— helpers ———————————————————————— */
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+const nf = new Intl.NumberFormat('en-US');
+const fmtTok = n => nf.format(Math.round(n || 0));
+const fmtUsd = n => '$' + (Number(n) || 0).toFixed(2);
+const short = (h, n) => (h ? String(h).slice(0, n || 10) : '—');
+const trunc = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  if (isNaN(d)) return String(ts || '');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return hh + ':' + mm;
+}
+function fmtDate(ts) {
+  const d = new Date(ts);
+  if (isNaN(d)) return String(ts || '');
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+const VERIF = {
+  automated:      { glyph: '⚙', label: 'machine-verified' },
+  human_decision: { glyph: '⚖', label: 'founder decides' },
+  evidence:       { glyph: '◈', label: 'ledger evidence' }
+};
+
+/* ———————————————————————— view state ———————————————————————— */
+
+let state = null;          // last good state object
+let mode = 'connecting';   // 'live' | 'specimen' | 'connecting'
+let everLive = false;
+let currentView = 'contract';
+let lastPayload = '';
+
+/* ———————————————————————— renderers ———————————————————————— */
+
+function articleHead(i, name) {
+  return '<div class="article-head"><span class="num">Article ' + ROMAN[i] + '</span>' +
+         '<span class="thread"></span><span class="name">' + esc(name) + '</span></div>';
+}
+
+function renderBrief(s) {
+  let h = '<p class="eyebrow">Instrument Ⅰ — Intake</p>' +
+          '<h1 class="doc-title">The Founder’s Brief</h1>' +
+          '<p class="doc-sub">As filed, verbatim. The interrogation proceeds from this text alone.</p>' +
+          '<hr class="rule">';
+  if (!s.brief) {
+    return h + '<p class="empty-note">No brief has been filed. Begin with <span style="font-family:var(--mono);font-style:normal;font-size:13px">signet brief &lt;file&gt;</span>.</p>';
+  }
+  const chars = s.brief.length;
+  const body = s.brief.split('\n').map(line => {
+    if (/^#{1,3}\s/.test(line)) return '<span class="h">' + esc(line.replace(/^#{1,3}\s/, '').toUpperCase()) + '</span>';
+    return esc(line);
+  }).join('\n');
+  h += '<div class="memo">' +
+       '<div class="memo-head"><span>Intake memorandum</span><span>' + fmtTok(chars) + ' characters</span></div>' +
+       '<div class="memo-body">' + body + '</div>' +
+       '</div>';
+  return h;
+}
+
+function renderInterrogation(s) {
+  let h = '<p class="eyebrow">Instrument Ⅱ — Examination</p>' +
+          '<h1 class="doc-title">Interrogation of the Brief</h1>' +
+          '<p class="doc-sub">Counsel’s questions and the founder’s answers, entered into the record.</p>' +
+          '<hr class="rule">';
+  const qs = (s.ledger || []).filter(e => e.type === 'interrogation.question');
+  const answers = {};
+  for (const e of (s.ledger || [])) {
+    if (e.type === 'interrogation.answer' && e.payload && e.payload.id) answers[e.payload.id] = e.payload.answer;
+  }
+  if (!qs.length) {
+    return h + '<p class="empty-note">The examination has not yet begun.</p>';
+  }
+  h += '<p class="depo-note">Whereupon the following proceedings were had:</p>';
+  qs.forEach((e, i) => {
+    const q = e.payload || {};
+    const a = answers[q.id];
+    h += '<div class="qa">' +
+      '<div class="turn q"><div class="marker">Q.' + (i + 1) + '</div><div>' +
+        '<div class="qtext">' + esc(q.question) + '</div>' +
+        (q.why_it_matters ? '<div class="why">' + esc(q.why_it_matters) + '</div>' : '') +
+        (q.default_if_unanswered ? '<div class="default"><b>If unanswered</b>' + esc(q.default_if_unanswered) + '</div>' : '') +
+      '</div></div>' +
+      '<div class="turn a"><div class="marker">A.</div><div>' +
+        (a != null
+          ? '<div class="atext">' + esc(a) + '</div>'
+          : '<div class="unanswered">No answer entered — default stands</div>') +
+      '</div></div>' +
+    '</div>';
+  });
+  return h;
+}
+
+function renderContract(s) {
+  const c = s.contract || s.draft;
+  let h = '';
+  if (!c) {
+    return '<p class="eyebrow">Instrument Ⅲ — Agreement</p>' +
+           '<h1 class="doc-title">Build Contract</h1><hr class="rule">' +
+           '<p class="empty-note">No contract has been drawn. Complete the interrogation to produce a draft.</p>';
+  }
+  const isDraft = !s.contract;
+  const sealBroken = !!(s.seal && s.seal.valid === false);
+  const meta = c.meta || {};
+  const gs = s.gate_status || {};
+
+  h += '<p class="eyebrow">Build Contract · v' + esc(meta.version || '0') + '</p>' +
+       '<h1 class="doc-title">' + esc(meta.title || 'Untitled Undertaking') + '</h1>' +
+       '<p class="doc-sub">Articles of agreement between the founder and the build.</p>' +
+       '<hr class="rule">';
+
+  if (sealBroken) {
+    h += '<div class="banner alarm">Seal broken — this contract has been altered since signing' +
+         '<span class="sub">' + esc(s.seal.error || 'Hash verification failed.') + '</span></div>';
+  }
+  if (isDraft) {
+    h += '<div class="banner draft">Draft — unsealed' +
+         '<span class="sub">This instrument has no force until locked and hash-sealed.</span></div>';
+  }
+
+  /* Article I — The Problem */
+  const p = c.problem || {};
+  h += '<section class="article">' + articleHead(0, 'The Problem') +
+       '<p class="prose">' + esc(p.statement || '—') + '</p>' +
+       (p.who_has_it ? '<p class="prose"><span class="who">Held by: ' + esc(p.who_has_it) + '</span></p>' : '') +
+       '</section>';
+
+  /* Article II — What Done Looks Like */
+  h += '<section class="article">' + articleHead(1, 'What Done Looks Like') +
+       '<ul class="plain outcomes">' +
+       (c.outcome || []).map(o => '<li>' + esc(o) + '</li>').join('') +
+       '</ul></section>';
+
+  /* Article III — Acceptance Criteria */
+  h += '<section class="article">' + articleHead(2, 'Acceptance Criteria');
+  h += (c.acceptance_criteria || []).map(ac => {
+    const v = (ac.verification && VERIF[ac.verification.type]) || { glyph: '◈', label: esc((ac.verification || {}).type || 'unspecified') };
+    const st = gs[ac.id] === 'pass' ? 'pass' : gs[ac.id] === 'fail' ? 'fail' : 'unverified';
+    const stLabel = st === 'pass' ? 'satisfied' : st === 'fail' ? 'in breach' : 'unverified';
+    return '<div class="crit">' +
+      '<div class="cid">' + esc(ac.id) + '</div>' +
+      '<div class="body">' +
+        '<div class="stmt">' + esc(ac.statement) + '</div>' +
+        '<div class="crit-meta">' +
+          '<span class="chip"><span class="glyph">' + v.glyph + '</span>' + v.label + '</span>' +
+          (ac.phase ? '<span class="chip phase">' + esc(ac.phase) + '</span>' : '') +
+          '<span class="state ' + st + '">' + stLabel + '</span>' +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+  h += '</section>';
+
+  /* Article IV — No-Go */
+  h += '<section class="article">' + articleHead(3, 'That Which Shall Not Be Built') +
+       '<div class="exclusions"><div class="label">Exclusions — binding</div><ul class="plain">' +
+       (c.no_go || []).map(x => '<li>' + esc(x) + '</li>').join('') +
+       '</ul></div></section>';
+
+  /* Article V — Budget */
+  h += '<section class="article">' + articleHead(4, 'Budget & Hard Caps') + '<div class="budget-table">';
+  const budget = (s.budget && s.budget.length) ? s.budget
+    : ((c.budget && c.budget.phases) || []).map(ph => ({
+        phase: ph.name, cap: { max_tokens: ph.max_tokens, max_usd: ph.max_usd },
+        spent: { tokens: 0, usd: 0 }, remaining: { tokens: ph.max_tokens, usd: ph.max_usd } }));
+  h += budget.map(b => {
+    const tCap = b.cap.max_tokens || 0, uCap = b.cap.max_usd || 0;
+    const tPct = tCap ? Math.min(100, (b.spent.tokens / tCap) * 100) : 0;
+    const uPct = uCap ? Math.min(100, (b.spent.usd / uCap) * 100) : 0;
+    const tCapped = tCap && b.spent.tokens >= tCap;
+    const uCapped = uCap && b.spent.usd >= uCap;
+    return '<div class="bphase">' +
+      '<div class="bname"><span class="p">' + esc(b.phase) + '</span>' +
+      '<span class="cap-note">hard cap · no overage</span></div>' +
+      '<div class="meter' + (tCapped ? ' capped' : '') + '">' +
+        '<div class="mrow"><span class="u">Tokens</span><span class="v">' + fmtTok(b.spent.tokens) + ' ⁄ ' + fmtTok(tCap) +
+        (tCapped ? '<span class="cap-flag">cap reached</span>' : '') + '</span></div>' +
+        '<div class="track"><div class="fill" style="width:' + tPct.toFixed(1) + '%"></div></div>' +
+      '</div>' +
+      '<div class="meter' + (uCapped ? ' capped' : '') + '">' +
+        '<div class="mrow"><span class="u">Spend</span><span class="v">' + fmtUsd(b.spent.usd) + ' ⁄ ' + fmtUsd(uCap) +
+        (uCapped ? '<span class="cap-flag">cap reached</span>' : '') + '</span></div>' +
+        '<div class="track"><div class="fill" style="width:' + uPct.toFixed(1) + '%"></div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  h += '</div></section>';
+
+  /* Article VI — Decision Rights */
+  h += '<section class="article">' + articleHead(5, 'Decision Rights of the Founder') +
+       '<ul class="plain outcomes">' +
+       (c.decision_points || []).map(d => '<li>' + esc(d) + '</li>').join('') +
+       '</ul></section>';
+
+  /* Article VII — Assumptions */
+  h += '<section class="article">' + articleHead(6, 'Assumptions & Their Tests');
+  h += (c.assumptions || []).map(a => {
+    const r = String(a.risk || '').toLowerCase();
+    const rc = r === 'high' ? 'high' : r === 'low' ? 'low' : 'medium';
+    return '<div class="assume">' +
+      '<div class="rk ' + rc + '">' + esc(a.risk || 'med') + ' risk</div>' +
+      '<div><div class="stmt">' + esc(a.statement) + '</div>' +
+      (a.test ? '<div class="test"><b>Test</b> — ' + esc(a.test) + '</div>' : '') +
+      '</div></div>';
+  }).join('');
+  h += '</section>';
+
+  /* Execution block */
+  const seal = c.seal;
+  if (seal) {
+    const h8 = short(seal.hash, 8);
+    h += '<div class="execution">' +
+      '<div class="sig-block">' +
+        '<div class="sig-script sig-line">' + esc(seal.signed_by || '—') + '</div>' +
+        '<div class="sig-caption"><span>Signature of the founder</span><span>' + esc(fmtDate(seal.signed_at)) + '</span></div>' +
+      '</div>' +
+      '<div class="seal-wrap">' +
+        '<div class="seal' + (sealBroken ? ' broken' : '') + '">' +
+          (sealBroken ? '<div class="crack"></div>' : '') +
+          '<span class="s-name">Signet</span>' +
+          '<span class="s-hash">' + esc(h8) + '</span>' +
+          '<span class="s-sub">' + esc(seal.algorithm || 'sha256') + '</span>' +
+        '</div>' +
+        '<div class="seal-caption">' + (sealBroken ? 'Seal broken' : 'Sealed & in force') +
+        '<br><span class="mono">' + esc(short(seal.hash, 16)) + '…</span></div>' +
+      '</div>' +
+    '</div>';
+  } else {
+    h += '<div class="execution"><div class="sig-block">' +
+      '<div class="sig-script sig-line">&nbsp;</div>' +
+      '<div class="sig-caption"><span>Awaiting signature</span><span>signet lock --sign "Your Name"</span></div>' +
+      '</div></div>';
+  }
+  return h;
+}
+
+/* — ledger summaries — */
+function summarize(e) {
+  const p = e.payload || {};
+  switch (e.type) {
+    case 'contract.locked':        return 'Contract “' + trunc(p.title, 46) + '” executed and sealed by ' + (p.signed_by || 'the founder');
+    case 'interrogation.started':  return 'Examination opened upon a brief of ' + fmtTok(p.brief_chars) + ' characters';
+    case 'interrogation.question': return 'Counsel asks (' + (p.id || '?') + '): ' + trunc(p.question, 84);
+    case 'interrogation.answer':   return 'Founder answers ' + (p.id || '?') + ': “' + trunc(p.answer, 72) + '”';
+    case 'interrogation.drafted':  return 'Contract drafted from the record' + (p.criteria ? ' — ' + p.criteria + ' criteria, ' + (p.assumptions || 0) + ' assumptions' : '');
+    case 'gate.pass':              return (p.criterion || '?') + ' satisfied' + (p.via ? ' via ' + p.via : '') + (p.detail ? ' — ' + trunc(p.detail, 60) : '');
+    case 'gate.fail':              return (p.criterion || '?') + ' in breach' + (p.via ? ' via ' + p.via : '') + (p.detail ? ' — ' + trunc(p.detail, 60) : '');
+    case 'budget.spend':           return (p.phase || '?') + ': ' + fmtTok(p.tokens) + ' tokens · ' + fmtUsd(p.usd) + (p.note ? ' — ' + trunc(p.note, 48) : '');
+    case 'budget.cap_hit':         return 'Hard cap reached — ' + (p.phase || '?') + ' · ' + (p.dim || '') + ' at ' + (p.dim === 'max_usd' ? fmtUsd(p.spent) : fmtTok(p.spent)) + '. Work halted.';
+    case 'decision.requested':     return 'The build defers to the founder on ' + (p.criterion || '?') + (p.prompt ? ' — “' + trunc(p.prompt, 56) + '”' : '');
+    case 'decision.made':          return (p.criterion || '?') + ' ' + (p.approved ? 'approved' : 'rejected') + (p.by ? ' by ' + p.by : '') + (p.note ? ' — ' + trunc(p.note, 48) : '');
+    case 'build.increment':        return 'Increment (' + (p.phase || '?') + '): ' + trunc(p.intent, 56) + (p.criteria && p.criteria.length ? ' → ' + p.criteria.join(', ') : '');
+    case 'drift.rejected':         return 'Drift refused — “' + trunc(p.intent, 56) + '” cites no criterion';
+    case 'note':                   return trunc(p.text || p.note || JSON.stringify(p), 90);
+    default:                       return trunc(JSON.stringify(p), 90);
+  }
+}
+function typeKind(t) {
+  if (t === 'gate.pass') return 'k-pass';
+  if (t === 'gate.fail' || t === 'drift.rejected' || t === 'budget.cap_hit') return 'k-fail';
+  if (t === 'decision.requested' || t === 'decision.made') return 'k-decision';
+  if (t === 'contract.locked') return 'k-seal';
+  if (t === 'budget.spend') return 'k-spend';
+  return 'k-neutral';
+}
+function typeBadge(t) {
+  return ({
+    'contract.locked': 'sealed', 'interrogation.started': 'opened',
+    'interrogation.question': 'question', 'interrogation.answer': 'answer',
+    'interrogation.drafted': 'drafted', 'gate.pass': 'pass', 'gate.fail': 'fail',
+    'budget.spend': 'spend', 'budget.cap_hit': 'cap hit',
+    'decision.requested': 'decision', 'decision.made': 'decided',
+    'build.increment': 'built', 'drift.rejected': 'drift', 'note': 'note'
+  })[t] || t;
+}
+
+function renderLedger(s) {
+  let h = '<p class="eyebrow">Instrument Ⅳ — The Record</p>' +
+          '<h1 class="doc-title">Evidence Ledger</h1>' +
+          '<p class="doc-sub">Append-only. Each entry bears the hash of the last. Nothing is unwritten.</p>' +
+          '<hr class="rule">';
+
+  const chain = s.ledger_chain;
+  if (chain && chain.valid === false) {
+    h += '<div class="banner alarm">Chain broken — the record has been tampered with' +
+         '<span class="sub">' + esc(chain.error || '') + '</span></div>';
+  }
+
+  const pend = s.pending_decisions || [];
+  if (pend.length) {
+    const acById = {};
+    const c = s.contract || s.draft;
+    for (const ac of ((c && c.acceptance_criteria) || [])) acById[ac.id] = ac;
+    h += '<div class="decision-card"><div class="dc-label">Awaiting your decision</div>' +
+      pend.map(id => {
+        const ac = acById[id];
+        return '<div class="dc-item">' +
+          '<div class="dc-crit"><span class="cid">' + esc(id) + '</span>' +
+          esc(ac ? ac.statement : 'Decision requested on this criterion.') + '</div>' +
+          '<code>signet decide ' + esc(id) + ' approve|reject</code>' +
+        '</div>';
+      }).join('') +
+      '</div>';
+  }
+
+  const entries = (s.ledger || []).slice().reverse();
+  if (!entries.length) return h + '<p class="empty-note">The record is empty. It begins when you do.</p>';
+
+  h += '<div class="ledger-list">' + entries.map(e => {
+    return '<div class="lrow ' + typeKind(e.type) + '">' +
+      '<span class="seq">' + String(e.seq).padStart(3, '0') + '</span>' +
+      '<span class="time">' + esc(fmtTime(e.ts)) + '</span>' +
+      '<span class="node"></span>' +
+      '<span class="what"><span class="badge">' + esc(typeBadge(e.type)) + '</span>' +
+      '<span class="summary">' + esc(summarize(e)) + '</span></span>' +
+      '<span class="hashes"><span class="h">' + esc(short(e.hash, 10)) + '</span><br>' +
+      '<span class="p">' + esc(short(e.prev_hash, 10)) + '</span></span>' +
+    '</div>';
+  }).join('') + '</div>';
+  return h;
+}
+
+/* ———————————————————————— shell ———————————————————————— */
+
+const RENDER = { brief: renderBrief, interrogation: renderInterrogation, contract: renderContract, ledger: renderLedger };
+
+function render() {
+  const s = state;
+  document.body.classList.toggle('specimen', mode === 'specimen');
+
+  const modeEl = document.getElementById('modeLine');
+  modeEl.className = 'mode-line' + (mode === 'specimen' ? ' specimen' : '');
+  modeEl.textContent = mode === 'live' ? 'live · local' :
+                       mode === 'specimen' ? 'specimen document' : 'connecting…';
+
+  const chainEl = document.getElementById('chainInd');
+  const chainTx = document.getElementById('chainText');
+  if (s && s.ledger_chain) {
+    const ok = s.ledger_chain.valid !== false;
+    chainEl.className = 'chain-ind' + (ok ? '' : ' broken');
+    chainTx.textContent = ok
+      ? 'chain intact ✓ · ' + (s.ledger_chain.length ?? (s.ledger || []).length)
+      : 'chain broken';
+  } else {
+    chainEl.className = 'chain-ind';
+    chainTx.textContent = 'no record';
+  }
+
+  for (const a of document.querySelectorAll('#nav a')) {
+    a.classList.toggle('active', a.dataset.view === currentView);
+  }
+  document.getElementById('view').innerHTML =
+    s ? RENDER[currentView](s) : '<p class="empty-note">Reaching the engine…</p>';
+}
+
+document.getElementById('nav').addEventListener('click', ev => {
+  const a = ev.target.closest('a[data-view]');
+  if (!a) return;
+  ev.preventDefault();
+  if (a.dataset.view !== currentView) {
+    currentView = a.dataset.view;
+    render();
+    window.scrollTo({ top: 0 });
+  }
+});
+
+function adopt(next, nextMode) {
+  const payload = JSON.stringify(next) + '|' + nextMode;
+  if (payload === lastPayload) return;
+  lastPayload = payload;
+  state = next;
+  mode = nextMode;
+  render();
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/api/state', { cache: 'no-store' });
+    if (!r.ok) throw new Error('bad status');
+    const j = await r.json();
+    everLive = true;
+    adopt(j, 'live');
+  } catch (err) {
+    if (!everLive) adopt(DEMO_STATE, 'specimen');
+    // if we were live and the engine blinks, keep the last sworn state on screen
+  }
+}
+
+render();
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
